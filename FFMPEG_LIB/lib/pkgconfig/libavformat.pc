@@ -1,0 +1,14 @@
+prefix=/home/wy/ffmpeg_win_build
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: libavformat
+Description: FFmpeg container format library
+Version: 57.71.100
+Requires: 
+Requires.private: libavcodec >= 57.89.100, libswresample >= 2.7.100, libavutil >= 55.58.100
+Conflicts:
+Libs: -L${libdir}  -lavformat 
+Libs.private: -lws2_32 -luser32 -lsecur32 -lm -lpsapi -ladvapi32 -lshell32
+Cflags: -I${includedir}
