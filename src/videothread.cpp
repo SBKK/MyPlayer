@@ -5,59 +5,68 @@ VideoThread::VideoThread(AVManager *avmngr)
     this->avmngr = avmngr;
 }
 
-//void VideoThread::run(){
+void VideoThread::run(){
 
-//    AVFrame *frame = av_frame_alloc();
-//    AVPacket pkt1, *packet = &pkt1;
-//    double pts;
-//    int ret;
+    AVFrame *frame = av_frame_alloc();
+    AVPacket pkt1,*pkt = &pkt1;
+    double pts;
+    double duration;
+    int ret;
+    AVRational tb = avmngr->video_st->time_base;
+    AVRational frame_rate = av_guess_frame_rate(avmngr->ic, avmngr->video_st, NULL);
 
-//    if (!frame) {
-//        return AVERROR(ENOMEM);
-//    }
+    if (!frame)
+        goto the_end;
 
-//    for (;;) {
-//        if(avmngr->videoq.deQueue(packet)<0)
-//              break;
+    for (;;) {
 
-//        ret = avcodec_send_packet(avmngr->viddec, packet);
-//        if (ret < 0 && ret != AVERROR(EAGAIN) && ret != AVERROR_EOF)
-//            continue;
+        avmngr->videoq.deQueue(*pkt);
 
-//        ret = avcodec_receive_frame(avmngr->viddec, frame);
-//        if (ret < 0 && ret != AVERROR_EOF)
-//            continue;
+        /* send the packet with the compressed data to the decoder */
+        ret = avcodec_send_packet(avmngr->viddec, pkt);
+        if (ret < 0) {
+            char s[50];
+            av_make_error_string(s,50,ret);
+            qDebug()<<s<<"\nError submitting the packet to the decoder";
+            goto the_end;
+        }
 
-//        if ((pts = av_frame_get_best_effort_timestamp(frame)) == AV_NOPTS_VALUE)
-//            pts = 0;
+        /* read all the output frames (in general there may be any number of them */
+        while (ret >= 0) {
+            ret = avcodec_receive_frame(avmngr->viddec, frame);
+            if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+                break;
+            else if (ret < 0) {
+                char s[50];
+                av_make_error_string(s,50,ret);
+                qDebug()<<s<<"\nError during decoding";
+                goto the_end;
+            }
 
-//        pts *= av_q2d(avmngr->video_st->time_base);
+            duration = (frame_rate.num && frame_rate.den ? av_q2d((AVRational){frame_rate.den, frame_rate.num}) : 0);
+            pts = (frame->pts == AV_NOPTS_VALUE) ? NAN : frame->pts * av_q2d(tb);
+            //ret = queue_picture(is, frame, pts, duration, av_frame_get_pkt_pos(frame), is->viddec.pkt_serial);
 
-//        pts = synchronize(frame, pts);
+            Frame *vp;
 
-//        ret = avmngr->(is, frame);
-//        av_frame_unref(frame);
+            if (!(vp = avmngr->pictq.frame_queue_peek_writable()))
+                    break;
 
+            vp->sar = frame->sample_aspect_ratio;
+            vp->uploaded = 0;
 
-//    }
+            vp->width = frame->width;
+            vp->height = frame->height;
+            vp->format = frame->format;
 
-//    av_frame_free(&frame);
-//    return 0;
-//}
+            vp->pts = pts;
+            vp->duration = duration;
 
-//double VideoThread::synchronize(AVFrame *srcFrame, double pts)
-//{
-//    double frame_delay;
-
-//    if (pts != 0)
-//        avmngr->video_clock = pts; // Get pts,then set video clock to it
-//    else
-//        pts = avmngr->video_clock; // Don't get pts,set it to video clock
-
-//    frame_delay = av_q2d(avmngr->video_st->codec->time_base);
-//    frame_delay += srcFrame->repeat_pict * (frame_delay * 0.5);
-
-//    avmngr->video_clock += frame_delay;
-
-//    return pts;
-//}
+            av_frame_move_ref(vp->frame, frame);
+            avmngr->pictq.frame_queue_push();
+        }
+        av_packet_unref(pkt);
+    }
+ the_end:
+    av_frame_free(&frame);
+}

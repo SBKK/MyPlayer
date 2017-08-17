@@ -5,6 +5,9 @@
 #include "avmanager.h"
 #include "readthread.h"
 #include "audiothread.h"
+#include "videothread.h"
+#include "myopenglwidget.h"
+#include <QLayout>
 
 namespace Ui {
 class MainWindow;
@@ -20,6 +23,11 @@ public:
 
 private:
     Ui::MainWindow *ui;
+
+
+protected:
+    void keyPressEvent(QKeyEvent*event);
+
 };
 
 #endif // MAINWINDOW_H

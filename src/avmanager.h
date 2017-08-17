@@ -5,9 +5,15 @@
 #include <QThread>
 #include "packetqueue.h"
 #include "framequeue.h"
+#include<QWidget>
+#include"avclock.h"
+
+
 
 extern "C"{
 #include "libavformat/avformat.h"
+#include "libavutil/time.h"
+#include "SDL2/SDL.h"
 }
 
 typedef struct AudioParams {
@@ -24,6 +30,16 @@ class AVManager
 public:
     AVManager(const char *filename);
     int open_codec(AVCodecContext **avctx, AVCodecParameters *codecpar);
+    void run();
+
+    int force_refresh;
+    int paused;
+
+    double frame_timer;
+    double max_frame_duration;      // maximum duration of a frame - above this, we consider the jump a timestamp discontinuity
+
+    AVClock audclk;
+    AVClock vidclk;
 
     int video_stream;
     AVStream *video_st;
@@ -32,6 +48,8 @@ public:
     double video_clock;
     FrameQueue pictq;
 
+    double audio_clock;
+    int audio_clock_serial;
     int audio_stream;
     AVStream *audio_st;
     PacketQueue audioq;
@@ -42,6 +60,7 @@ public:
     unsigned int audio_buf_size; /* in bytes */
     unsigned int audio_buf1_size; /* in bytes */
     unsigned int audio_buf_index; /* in bytes */
+    int audio_write_buf_size;
 
     int audio_hw_buf_size;
     struct AudioParams audio_src;

@@ -14,6 +14,7 @@ AudioThread::AudioThread(AVManager *avmngr)
     this->avmngr->audio_buf_size  = 0;
     this->avmngr->audio_buf1_size = 0;
     this->avmngr->audio_buf_index = 0;
+    this->avmngr->audio_write_buf_size = 0;
 }
 
 int AudioThread::audio_open(struct AudioParams *audio_hw_params){
@@ -84,12 +85,19 @@ void audio_callback(void *userdata, Uint8 *stream, int len){
       stream += len1;
       avmngr->audio_buf_index += len1;
     }
+
+    avmngr->audio_write_buf_size = avmngr->audio_buf_size - avmngr->audio_buf_index;
+    /* Let's assume the audio driver that is used by SDL has two periods. */
+    if (!isnan(avmngr->audio_clock)) {
+        avmngr->audclk.set_clock_at(avmngr->audio_clock - (double)(2 * avmngr->audio_hw_buf_size + avmngr->audio_write_buf_size) / avmngr->audio_tgt.bytes_per_sec, avmngr->audio_clock_serial, av_gettime_relative() / 1000000.0);
+    }
 }
 
 int audio_decode_frame(AVManager *avmngr)
 {
     int data_size, resampled_data_size;
     int64_t dec_channel_layout;
+    av_unused double audio_clock0;
 
     Frame *af;
 
@@ -163,6 +171,14 @@ int audio_decode_frame(AVManager *avmngr)
         resampled_data_size = data_size;
     }
 
+    audio_clock0 = avmngr->audio_clock;
+    /* update the audio clock with the pts */
+    if (!isnan(af->pts))
+        avmngr->audio_clock = af->pts + (double) af->frame->nb_samples / af->frame->sample_rate;
+    else
+        avmngr->audio_clock = NAN;
+    avmngr->audio_clock_serial = af->serial;
+
     return resampled_data_size;
 }
 
@@ -214,7 +230,6 @@ void AudioThread::run(){
 
 
         }
-
           av_packet_unref(pkt);
 
 

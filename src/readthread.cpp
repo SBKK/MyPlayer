@@ -13,6 +13,8 @@ void ReadThread::run(){
 
     while (1) {
 
+
+        /*if one of av disabled,it will be full cuz the disable one did not consume */
         /* if the queue are full, no need to read more */
         if (avmngr->audioq.queue->size()*sizeof(AVPacket) + avmngr->videoq.queue->size()*sizeof(AVPacket) > MAX_QUEUE_SIZE
             || (avmngr->audioq.queue->size()>MIN_FRAMES || avmngr->videoq.queue->size()>MIN_FRAMES)) {
@@ -49,9 +51,10 @@ void ReadThread::run(){
 
         if (pkt->stream_index == avmngr->audio_stream) {
             avmngr->audioq.enQueue(*pkt);
+            //av_packet_unref(pkt);
         } else if (pkt->stream_index == avmngr->video_stream) {
-            //avmngr->videoq.enQueue(pkt);
-            av_packet_unref(pkt);
+            avmngr->videoq.enQueue(*pkt);
+            //av_packet_unref(pkt);
         }else{
             av_packet_unref(pkt);
         }

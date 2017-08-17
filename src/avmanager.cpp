@@ -4,10 +4,16 @@ AVManager::AVManager(const char *filename)
 {
     continue_read_thread = new QWaitCondition();
 
-     ic = NULL;
-     swr_ctx = NULL;
+    ic = NULL;
+    swr_ctx = NULL;
 
-     sampq.pktq = &audioq;
+
+    pictq.pktq = &videoq;
+    sampq.pktq = &audioq;
+
+    audio_clock_serial = -1;
+    paused = 0;
+
 
     /* register all codecs, demux and protocols */
     av_register_all();
@@ -26,7 +32,7 @@ AVManager::AVManager(const char *filename)
     }
 
     /* dump input information to stderr */
-    av_dump_format(ic, 0, "src_filename", 0);
+    //av_dump_format(ic, 0, "src_filename", 0);
 
     //find stream and its ID
     video_stream = av_find_best_stream(ic, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
