@@ -7,6 +7,19 @@
 #include "videothread.h"
 #include "aveventthread.h"
 #include"myopenglwidget.h"
+
+
+/*
+ * 2017/8/17
+ * 播放器1.0
+ * 模仿ffplay，想写成C++的
+ * 功力不够，后面基本是抄
+ * 完成了opengl播放视频，sdl播放音频
+ * 完成了音视频同步（效果很差）
+ * 没有移植好ffplay的内容
+ * 有空再玩吧
+*/
+
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
